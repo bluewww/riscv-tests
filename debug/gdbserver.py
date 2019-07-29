@@ -625,7 +625,7 @@ class UserInterrupt(DebugTest):
         self.gdb.c()
         self.gdb.p("i=123")
         self.gdb.c(wait=False)
-        time.sleep(2)
+        time.sleep(20)  # eh, this is machine dependent
         output = self.gdb.interrupt()
         assert "main" in output
         assertGreater(self.gdb.p("j"), 10)
@@ -902,13 +902,63 @@ class StepTest(GdbSingleHartTest):
     def test(self):
         main_address = self.gdb.p("$pc")
         if self.hart.extensionSupported("c"):
-            sequence = (4, 8, 0xc, 0xe, 0x14, 0x18, 0x22, 0x1c, 0x24, 0x24)
+            sequence = (4, 8, 0xc, 0xe, 0x14, 0x18, 0x22, 0x1c, -0x2, -0x2)
         else:
-            sequence = (4, 8, 0xc, 0x10, 0x18, 0x1c, 0x28, 0x20, 0x2c, 0x2c)
+            sequence = (4, 8, 0xc, 0x10, 0x18, 0x1c, 0x28, 0x20, -0x4, -0x4)
         for expected in sequence:
             self.gdb.stepi()
             pc = self.gdb.p("$pc")
             assertEqual("%x" % (pc - main_address), "%x" % expected)
+
+class StepTestMret(GdbSingleHartTest):
+    compile_args = ("programs/step_mret.S", )
+
+    def setup(self):
+        self.gdb.load()
+        self.gdb.b("main")
+        self.gdb.c()
+
+    def test(self):
+        main_address = self.gdb.p("$pc")
+        if self.hart.extensionSupported("c"):
+            sequence = (4, 8, 0xc, 0xe, 0x14, 0x18, 0x22, 0x1c, -0x6, -0x4,
+                        0x1c)
+        else:
+            sequence = (4, 8, 0xc, 0x10, 0x18, 0x1c, 0x28, 0x20, -0x8, -0x4,
+                        0x1c)
+        for expected in sequence:
+            self.gdb.stepi()
+            pc = self.gdb.p("$pc")
+            assertEqual("%x" % (pc - main_address), "%x" % expected)
+
+class StepTestSpecial(GdbSingleHartTest):
+    compile_args = ("programs/step_special.S", )
+
+    def setup(self):
+        self.gdb.load()
+        self.gdb.b("main")
+        self.gdb.c()
+
+    def test(self):
+        main_address = self.gdb.p("$pc")
+        if self.hart.extensionSupported("c"):
+            sequence = (4, 8, 0xc, 0xe, 0x14, 0x18, 0x28,
+                        0x1c, -0x10, -0xe, -0xa, -0x8, -0x4,
+                        0x20, -0x10, -0xe, -0xa, -0x8, -0x4,
+                        0x24, -0x10, -0xe, -0xa, -0x8, -0x4,
+                        0x28)
+        else:
+            sequence = (4, 8, 0xc, 0xe, 0x14, 0x18, 0x28,
+                        0x1c, -0x10, -0xe, -0xa, -0x8, -0x4,
+                        0x20, -0x10, -0xe, -0xa, -0x8, -0x4,
+                        0x24, -0x10, -0xe, -0xa, -0x8, -0x4,
+                        0x28)
+        for expected in sequence:
+            self.gdb.stepi()
+            pc = self.gdb.p("$pc")
+            print("real:%x expected:%x" % ((pc - main_address), expected))
+            #assertEqual("%x" % (pc - main_address), "%x" % expected)
+
 
 class JumpHbreak(GdbSingleHartTest):
     """'jump' resumes execution at location. Execution stops again immediately
