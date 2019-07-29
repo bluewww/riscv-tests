@@ -121,7 +121,8 @@ class Target(object):
         """Start the debug server that gdb connects to, eg. OpenOCD."""
         return testlib.Openocd(server_cmd=self.server_cmd,
                 config=self.openocd_config_path,
-                timeout=self.server_timeout_sec)
+                               timeout=self.server_timeout_sec,
+                               debug=True)
 
     def compile(self, hart, *sources):
         binary_name = "%s_%s-%d" % (

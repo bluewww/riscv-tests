@@ -6,6 +6,7 @@ import re
 import shlex
 import subprocess
 import sys
+import signal
 import tempfile
 import time
 import traceback
@@ -214,6 +215,64 @@ class VcsSim(object):
         except OSError:
             pass
 
+
+class VsimSim(object):
+    logfile = tempfile.NamedTemporaryFile(prefix='simvv', suffix='.log')
+    logname = logfile.name
+
+    def __init__(self, sim_cmd=None, debug=False, timeout=300):
+        if sim_cmd:
+            cmd = shlex.split(sim_cmd)
+        else:
+            cmd = ["simv"]
+        cmd += ["+jtag_vpi_enable"]
+        if debug:
+            cmd[0] = cmd[0] + "-debug"
+            cmd += ["+vcdplusfile=output/gdbserver.vpd"]
+
+        logfile = open(self.logname, "w")
+        if print_log_names:
+            real_stdout.write("Temporary VSIM log: %s\n" % self.logname)
+        logfile.write("+ %s\n" % " ".join(cmd))
+        logfile.flush()
+
+        listenfile = open(self.logname, "r")
+        listenfile.seek(0, 2)
+        self.process = subprocess.Popen(cmd, stdin=subprocess.PIPE,
+                                        stdout=logfile, stderr=logfile, preexec_fn=os.setsid)
+        done = False
+        start = time.time()
+        while not done:
+            # Fail if VSIM exits early
+            exit_code = self.process.poll()
+            if exit_code is not None:
+                raise RuntimeError('VSIM simulator exited early with status %d'
+                                   % exit_code)
+
+            line = listenfile.readline()
+            if not line:
+                time.sleep(1)
+            match = re.match(r"^Listening on port (\d+)$", line)
+
+            if match:
+                done = True
+                self.port = int(match.group(1))
+                os.environ['JTAG_VPI_PORT'] = str(self.port)
+
+            if (time.time() - start) > timeout:
+                raise Exception("Timed out waiting for VSIM to listen for JTAG "
+                        "vpi")
+
+    def __del__(self):
+        try:
+            os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+            #self.process.kill()
+            self.process.wait()
+        except OSError as ex:
+            real_stdout.write(ex)
+            pass
+
+
 class Openocd(object):
     logfile = tempfile.NamedTemporaryFile(prefix='openocd', suffix='.log')
     logname = logfile.name
@@ -224,7 +283,8 @@ class Openocd(object):
         if server_cmd:
             cmd = shlex.split(server_cmd)
         else:
-            openocd = os.path.expandvars("$RISCV/bin/openocd")
+            #openocd = os.path.expandvars("$RISCV/bin/openocd")
+            openocd = os.path.expandvars("~/.local/bin/openocd")
             cmd = [openocd]
             if debug:
                 cmd.append("-d")
@@ -682,6 +742,7 @@ def run_all_tests(module, target, parsed):
         if isinstance(definition, type) and hasattr(definition, 'test') and \
                 (not parsed.test or any(test in name for test in parsed.test)):
             todo.append((name, definition, None))
+            print "%s" % name
 
     results, count = run_tests(parsed, target, todo)
 
