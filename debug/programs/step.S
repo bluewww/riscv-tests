@@ -1,6 +1,10 @@
 // Test stepping over a variety of instructions.
 
         .global main
+	.balign 256 // RI5CY's mtvec alignment constraint
+        .align  2
+trap_entry:
+        j       trap_entry              // -4
 
 main:
         la      t0, trap_entry          // 0, 4
@@ -23,6 +27,3 @@ three:
 two:
         jr      t0                      // 0x28
 
-        .align  2
-trap_entry:
-        j       trap_entry              // 0x2c
