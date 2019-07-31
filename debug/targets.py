@@ -125,7 +125,7 @@ class Target(object):
         return testlib.Openocd(server_cmd=self.server_cmd,
                 config=self.openocd_config_path,
                                timeout=self.server_timeout_sec,
-                               debug=True)
+                               debug=False)
 
     def compile(self, hart, *sources):
         binary_name = "%s_%s-%d" % (
