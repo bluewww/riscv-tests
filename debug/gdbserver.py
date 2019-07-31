@@ -985,6 +985,10 @@ class JumpHbreak(GdbSingleHartTest):
 
 class TriggerTest(GdbSingleHartTest):
     compile_args = ("programs/trigger.S", )
+
+    def early_applicable(self):
+        return self.hart.trigger_implemented
+
     def setup(self):
         self.gdb.load()
         self.gdb.b("main")
@@ -1001,6 +1005,10 @@ class TriggerTest(GdbSingleHartTest):
 class TriggerExecuteInstant(TriggerTest):
     """Test an execute breakpoint on the first instruction executed out of
     debug mode."""
+
+    def early_applicable(self):
+        return self.hart.trigger_implemented
+
     def test(self):
         main_address = self.gdb.p("$pc")
         self.gdb.command("hbreak *0x%x" % (main_address + 4))
@@ -1020,6 +1028,10 @@ class TriggerExecuteInstant(TriggerTest):
 class TriggerLoadAddressInstant(TriggerTest):
     """Test a load address breakpoint on the first instruction executed out of
     debug mode."""
+
+    def early_applicable(self):
+        return self.hart.trigger_implemented
+
     def test(self):
         self.gdb.command("b just_before_read_loop")
         self.gdb.c()
@@ -1047,6 +1059,10 @@ class TriggerLoadAddressInstant(TriggerTest):
 #        self.exit()
 
 class TriggerStoreAddressInstant(TriggerTest):
+
+    def early_applicable(self):
+        return self.hart.trigger_implemented
+
     def test(self):
         """Test a store address breakpoint on the first instruction executed out
         of debug mode."""
@@ -1063,7 +1079,7 @@ class TriggerStoreAddressInstant(TriggerTest):
 
 class TriggerDmode(TriggerTest):
     def early_applicable(self):
-        return self.hart.honors_tdata1_hmode
+        return self.hart.honors_tdata1_hmode and self.hart.trigger_implemented
 
     def check_triggers(self, tdata1_lsbs, tdata2):
         dmode = 1 << (self.hart.xlen-5)

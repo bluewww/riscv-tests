@@ -18,6 +18,9 @@ class Hart(object):
     # defined. Defaults to <name>.lds.
     link_script_path = None
 
+    # Whether there is a Trigger module available
+    trigger_implemented = True
+
     # Implements dmode in tdata1 as described in the spec. Harts that need
     # this value set to False are not compliant with the spec (but still usable
     # as long as running code doesn't try to mess with triggers set by an
