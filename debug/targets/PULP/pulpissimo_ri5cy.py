@@ -8,6 +8,7 @@ class pulpissimo_ri5cy_hart(targets.Hart):
     ram_size = 0xfc000
     reset_vectors = [0x1c000080]
     link_script_path = "pulpissimo_ri5cy.lds"
+    trigger_implemented = False
 
 class pulpissimo_ri5cy(targets.Target):
     harts = [pulpissimo_ri5cy_hart()]
